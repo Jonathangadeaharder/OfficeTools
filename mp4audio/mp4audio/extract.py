@@ -8,7 +8,7 @@ def _check_ffmpeg() -> None:
         raise SystemExit("ffmpeg not found. Install: brew install ffmpeg")
 
 
-def _format_size(n_bytes: int) -> str:
+def _format_size(n_bytes: float) -> str:
     for unit in ("B", "KB", "MB"):
         if n_bytes < 1024:
             return f"{n_bytes:.1f} {unit}"
