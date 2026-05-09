@@ -8,22 +8,27 @@ class VideoTools:
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.title("Video Tools")
-        self.root.geometry("480x320")
-        self.root.resizable(True, True)
+        self.root.geometry("520x380")
+        self.root.minsize(440, 300)
         self.root.configure(padx=12, pady=12)
 
         style = ttk.Style()
         style.theme_use("aqua")
+
+        self.root.grid_rowconfigure(1, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
 
         self._build_ui()
 
     def _build_ui(self) -> None:
         ttk.Button(
             self.root, text="Select Files...", command=self._select
-        ).pack(pady=(0, 8))
+        ).grid(row=0, column=0, sticky="w", pady=(0, 8))
 
         frame = ttk.Frame(self.root)
-        frame.pack(fill="both", expand=True)
+        frame.grid(row=1, column=0, sticky="nsew")
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
 
         self.listbox = tk.Listbox(
             frame,
@@ -32,28 +37,30 @@ class VideoTools:
             relief="flat",
             highlightthickness=0,
         )
-        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.listbox.yview)
+        scrollbar = ttk.Scrollbar(
+            frame, orient="vertical", command=self.listbox.yview
+        )
         self.listbox.configure(yscrollcommand=scrollbar.set)
 
-        self.listbox.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        self.listbox.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
 
         ttk.Button(
             self.root, text="Remove Selected", command=self._remove
-        ).pack(pady=(8, 6))
+        ).grid(row=2, column=0, sticky="w", pady=(8, 6))
 
         btn_frame = ttk.Frame(self.root)
-        btn_frame.pack(pady=(0, 6))
+        btn_frame.grid(row=3, column=0, sticky="w", pady=(0, 6))
 
         ttk.Button(
             btn_frame, text="Extract Audio", command=self._extract_audio
-        ).pack(side="left", padx=4)
+        ).pack(side="left", padx=(0, 6))
         ttk.Button(
             btn_frame, text="Add Subtitles", command=self._add_subtitles
-        ).pack(side="left", padx=4)
+        ).pack(side="left", padx=(0, 6))
 
         self.status = ttk.Label(self.root, text="Select files to begin...")
-        self.status.pack(pady=(4, 0))
+        self.status.grid(row=4, column=0, sticky="w", pady=(4, 0))
 
     def _select(self) -> None:
         paths = filedialog.askopenfilenames(
