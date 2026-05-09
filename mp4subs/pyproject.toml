@@ -1,0 +1,12 @@
+[project]
+name = "mp4subs"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+mp4subs = "mp4subs.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
