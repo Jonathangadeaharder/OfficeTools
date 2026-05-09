@@ -1,0 +1,12 @@
+[project]
+name = "videogui"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+videogui = "videogui.gui:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
