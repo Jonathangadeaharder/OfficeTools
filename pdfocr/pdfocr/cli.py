@@ -1,4 +1,6 @@
 import argparse
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 from .ocr import ocr_pdf
@@ -9,9 +11,7 @@ def main() -> None:
         prog="pdfocr",
         description="OCR PDFs using Tesseract via ocrmypdf",
     )
-    parser.add_argument(
-        "files", nargs="+", type=Path, help="PDF file(s) to OCR"
-    )
+    parser.add_argument("files", nargs="+", type=Path, help="PDF file(s) to OCR")
     parser.add_argument(
         "-o", "--output", type=Path, help="Output path (single file only)"
     )
@@ -44,11 +44,19 @@ def main() -> None:
         dest="optimize",
         help="Disable output optimization",
     )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=None,
+        help="Parallel page workers per file (default: sqrt(cpu_count))",
+    )
     args = parser.parse_args()
 
     if args.output and len(args.files) > 1:
         parser.error("-o/--output can only be used with a single input file")
 
+    valid = []
     for path in args.files:
         if not path.exists():
             print(f"  Skipping: {path} not found")
@@ -56,14 +64,33 @@ def main() -> None:
         if path.suffix.lower() != ".pdf":
             print(f"  Skipping: {path} not a PDF")
             continue
+        valid.append(path)
 
-        output = args.output if args.output and len(args.files) == 1 else None
-        ocr_pdf(
-            path,
-            output,
-            language=args.language,
-            force_ocr=args.force_ocr,
-            deskew=args.deskew,
-            rotate=args.rotate,
-            optimize=1 if args.optimize else 0,
-        )
+    if not valid:
+        return
+
+    cpu = os.cpu_count() or 1
+    max_workers = max(1, int(cpu**0.5))
+
+    with ProcessPoolExecutor(max_workers=max_workers) as pool:
+        futures = {}
+        for path in valid:
+            output = args.output if args.output and len(valid) == 1 else None
+            f = pool.submit(
+                ocr_pdf,
+                path,
+                output,
+                language=args.language,
+                force_ocr=args.force_ocr,
+                deskew=args.deskew,
+                rotate=args.rotate,
+                optimize=1 if args.optimize else 0,
+                jobs=args.jobs,
+            )
+            futures[f] = path
+
+        for f in as_completed(futures):
+            try:
+                f.result()
+            except Exception as e:
+                print(f"  ERROR on {futures[f].name}: {e}")

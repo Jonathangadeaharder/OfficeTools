@@ -1,6 +1,9 @@
+import platform
 import shutil
 import subprocess
 from pathlib import Path
+
+IS_APPLE_SILICON = platform.system() == "Darwin" and platform.machine() == "arm64"
 
 
 def _check_ffmpeg() -> None:
@@ -33,6 +36,7 @@ def add_subtitles(
     force: bool = False,
     language: str = "eng",
     crf: int = 23,
+    sw_encode: bool = False,
 ) -> Path:
     _check_ffmpeg()
 
@@ -41,25 +45,54 @@ def add_subtitles(
 
     if force:
         escaped_srt = _escape_srt_path(subs_path)
-        cmd = [
-            "ffmpeg",
-            "-i", str(video_path),
-            "-vf", f"subtitles='{escaped_srt}'",
-            "-c:v", "libx264",
-            "-crf", str(crf),
-            "-preset", "fast",
-            "-c:a", "copy",
-            "-y",
-            str(output_path),
-        ]
+        use_hw = IS_APPLE_SILICON and not sw_encode
+        if use_hw:
+            cmd = [
+                "ffmpeg",
+                "-i",
+                str(video_path),
+                "-vf",
+                f"subtitles='{escaped_srt}'",
+                "-c:v",
+                "h264_videotoolbox",
+                "-b:v",
+                "8M",
+                "-c:a",
+                "copy",
+                "-y",
+                str(output_path),
+            ]
+        else:
+            cmd = [
+                "ffmpeg",
+                "-i",
+                str(video_path),
+                "-vf",
+                f"subtitles='{escaped_srt}'",
+                "-c:v",
+                "libx264",
+                "-crf",
+                str(crf),
+                "-preset",
+                "fast",
+                "-c:a",
+                "copy",
+                "-y",
+                str(output_path),
+            ]
     else:
         cmd = [
             "ffmpeg",
-            "-i", str(video_path),
-            "-i", str(subs_path),
-            "-c", "copy",
-            "-c:s", "mov_text",
-            "-metadata:s:s:0", f"language={language}",
+            "-i",
+            str(video_path),
+            "-i",
+            str(subs_path),
+            "-c",
+            "copy",
+            "-c:s",
+            "mov_text",
+            "-metadata:s:s:0",
+            f"language={language}",
             "-y",
             str(output_path),
         ]

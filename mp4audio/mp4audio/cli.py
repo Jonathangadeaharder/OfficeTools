@@ -1,4 +1,6 @@
 import argparse
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
 from .extract import extract_audio
@@ -26,11 +28,18 @@ def main() -> None:
         default=128,
         help="AAC bitrate in kbps (default: 128, only with --reencode)",
     )
+    parser.add_argument(
+        "--sw",
+        action="store_true",
+        dest="sw_encode",
+        help="Force software AAC encoding even on macOS",
+    )
     args = parser.parse_args()
 
     if args.output and len(args.files) > 1:
         parser.error("-o/--output can only be used with a single input file")
 
+    valid = []
     for path in args.files:
         if not path.exists():
             print(f"  Skipping: {path} not found")
@@ -38,11 +47,30 @@ def main() -> None:
         if path.suffix.lower() != ".mp4":
             print(f"  Skipping: {path} not an MP4")
             continue
+        valid.append(path)
 
-        output = args.output if args.output and len(args.files) == 1 else None
-        extract_audio(
-            path,
-            output,
-            reencode=args.reencode,
-            bitrate=args.bitrate,
-        )
+    if not valid:
+        return
+
+    cpu = os.cpu_count() or 1
+    max_workers = max(1, min(int(cpu**0.5), len(valid)))
+
+    with ProcessPoolExecutor(max_workers=max_workers) as pool:
+        futures = {}
+        for path in valid:
+            output = args.output if args.output and len(valid) == 1 else None
+            f = pool.submit(
+                extract_audio,
+                path,
+                output,
+                reencode=args.reencode,
+                bitrate=args.bitrate,
+                sw_encode=args.sw_encode,
+            )
+            futures[f] = path
+
+        for f in as_completed(futures):
+            try:
+                f.result()
+            except Exception as e:
+                print(f"  ERROR on {futures[f].name}: {e}")

@@ -1,6 +1,9 @@
+import platform
 import shutil
 import subprocess
 from pathlib import Path
+
+IS_MACOS = platform.system() == "Darwin"
 
 
 def _check_ffmpeg() -> None:
@@ -21,6 +24,7 @@ def extract_audio(
     output_path: Path | None = None,
     reencode: bool = False,
     bitrate: int = 128,
+    sw_encode: bool = False,
 ) -> Path:
     _check_ffmpeg()
 
@@ -28,21 +32,27 @@ def extract_audio(
         output_path = input_path.with_suffix(".m4a")
 
     if reencode:
+        codec = "aac" if sw_encode or not IS_MACOS else "aac_at"
         cmd = [
             "ffmpeg",
-            "-i", str(input_path),
+            "-i",
+            str(input_path),
             "-vn",
-            "-c:a", "aac",
-            "-b:a", f"{bitrate}k",
+            "-c:a",
+            codec,
+            "-b:a",
+            f"{bitrate}k",
             "-y",
             str(output_path),
         ]
     else:
         cmd = [
             "ffmpeg",
-            "-i", str(input_path),
+            "-i",
+            str(input_path),
             "-vn",
-            "-c:a", "copy",
+            "-c:a",
+            "copy",
             "-y",
             str(output_path),
         ]
