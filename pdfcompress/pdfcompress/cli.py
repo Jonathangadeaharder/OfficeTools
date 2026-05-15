@@ -9,9 +9,7 @@ def main() -> None:
         prog="pdfcompress",
         description="Blazingly fast PDF compression using Ghostscript + pikepdf",
     )
-    parser.add_argument(
-        "files", nargs="+", type=Path, help="PDF file(s) to compress"
-    )
+    parser.add_argument("files", nargs="+", type=Path, help="PDF file(s) to compress")
     parser.add_argument(
         "-o", "--output", type=Path, help="Output path (single file only)"
     )
@@ -19,18 +17,26 @@ def main() -> None:
         "-q",
         "--quality",
         type=int,
-        default=85,
-        help="JPEG quality 1-100 (default: 85)",
+        default=75,
+        help="JPEG quality 1-100 (default: 75)",
     )
-    parser.add_argument(
+
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--aggressive",
         action="store_true",
-        help="Max compression: 72 DPI images",
+        help="Force max compression (72 DPI images)",
     )
-    parser.add_argument(
+    mode.add_argument(
         "--light",
         action="store_true",
-        help="Lossless structural compression only (pikepdf, no Ghostscript)",
+        help="Lossless structural compression only (no Ghostscript)",
+    )
+    mode.add_argument(
+        "--dpi",
+        type=int,
+        dest="dpi_arg",
+        help="Custom image downsampling DPI (disables auto-detection)",
     )
     args = parser.parse_args()
 
@@ -52,4 +58,5 @@ def main() -> None:
             quality=args.quality,
             aggressive=args.aggressive,
             light=args.light,
+            dpi=args.dpi_arg,
         )

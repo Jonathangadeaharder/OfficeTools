@@ -1,11 +1,14 @@
 [project]
-name = "mp4audio"
+name = "officetools"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.scripts]
-mp4audio = "mp4audio.cli:main"
+officetools = "officetools.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["officetools"]
 
 [build-system]
 requires = ["hatchling"]

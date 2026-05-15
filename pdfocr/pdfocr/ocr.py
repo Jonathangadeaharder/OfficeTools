@@ -1,3 +1,4 @@
+import os
 import shutil
 from pathlib import Path
 
@@ -17,13 +18,20 @@ def ocr_pdf(
     deskew: bool = True,
     rotate: bool = True,
     optimize: int = 1,
+    jobs: int | None = None,
 ) -> Path:
     _check_tesseract()
 
     if output_path is None:
         output_path = input_path.with_stem(f"{input_path.stem}_ocr")
 
-    kwargs = dict(
+    if jobs is None:
+        cpu = os.cpu_count() or 1
+        jobs = max(1, int(cpu**0.5))
+
+    ocrmypdf.ocr(
+        str(input_path),
+        str(output_path),
         language=language,
         deskew=deskew,
         rotate_pages=rotate,
@@ -31,14 +39,10 @@ def ocr_pdf(
         output_type="pdf",
         progress_bar=False,
         quiet=True,
+        jobs=jobs,
+        force_ocr=force_ocr,
+        skip_text=not force_ocr,
     )
-
-    if force_ocr:
-        kwargs["force_ocr"] = True
-    else:
-        kwargs["skip_text"] = True
-
-    ocrmypdf.ocr(str(input_path), str(output_path), **kwargs)
 
     original = input_path.stat().st_size
     result = output_path.stat().st_size
@@ -53,7 +57,7 @@ def ocr_pdf(
     return output_path
 
 
-def _format_size(n_bytes: int) -> str:
+def _format_size(n_bytes: float) -> str:
     for unit in ("B", "KB", "MB"):
         if n_bytes < 1024:
             return f"{n_bytes:.1f} {unit}"

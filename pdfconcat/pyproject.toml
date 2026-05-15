@@ -1,11 +1,14 @@
 [project]
-name = "mp4audio"
+name = "pdfconcat"
 version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["pikepdf", "rich"]
 
 [project.scripts]
-mp4audio = "mp4audio.cli:main"
+pdfconcat = "pdfconcat.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pdfconcat"]
 
 [build-system]
 requires = ["hatchling"]

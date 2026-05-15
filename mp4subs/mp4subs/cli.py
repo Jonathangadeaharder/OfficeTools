@@ -9,15 +9,9 @@ def main() -> None:
         prog="mp4subs",
         description="Add SRT subtitles to MP4 (soft sub by default, --force to hard-burn)",
     )
-    parser.add_argument(
-        "video", type=Path, help="MP4 video file"
-    )
-    parser.add_argument(
-        "subs", type=Path, help="SRT subtitle file"
-    )
-    parser.add_argument(
-        "-o", "--output", type=Path, help="Output path"
-    )
+    parser.add_argument("video", type=Path, help="MP4 video file")
+    parser.add_argument("subs", type=Path, help="SRT subtitle file")
+    parser.add_argument("-o", "--output", type=Path, help="Output path")
     parser.add_argument(
         "--force",
         action="store_true",
@@ -32,7 +26,13 @@ def main() -> None:
         "--crf",
         type=int,
         default=23,
-        help="H.264 CRF value for hard burn (default: 23)",
+        help="H.264 CRF value for hard burn (default: 23, ignored with hardware encode)",
+    )
+    parser.add_argument(
+        "--sw",
+        action="store_true",
+        dest="sw_encode",
+        help="Force software encoding (libx264) even on Apple Silicon",
     )
     args = parser.parse_args()
 
@@ -52,4 +52,5 @@ def main() -> None:
         force=args.force,
         language=args.language,
         crf=args.crf,
+        sw_encode=args.sw_encode,
     )

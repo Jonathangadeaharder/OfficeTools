@@ -1,11 +1,15 @@
 [project]
-name = "mp4audio"
+name = "pdf2md"
 version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "docling[vlm]",
+    "fpdf2>=2.8.7",
+    "mlx-vlm",
+]
 
 [project.scripts]
-mp4audio = "mp4audio.cli:main"
+pdf2md = "pdf2md.cli:main"
 
 [build-system]
 requires = ["hatchling"]

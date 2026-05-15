@@ -1,11 +1,14 @@
 [project]
-name = "mp4audio"
+name = "pdfsplit"
 version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = ["pikepdf", "rich"]
 
 [project.scripts]
-mp4audio = "mp4audio.cli:main"
+pdfsplit = "pdfsplit.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["pdfsplit"]
 
 [build-system]
 requires = ["hatchling"]
