@@ -1,12 +1,15 @@
 [project]
-name = "pdfgui"
-version = "0.1.1"
+name = "ebooktool"
+version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "ebooklib>=0.18",
+    "markdown>=3.7",
+    "fpdf2>=2.8.7",
+]
 
 [project.scripts]
-pdfgui = "pdfgui.launch:main"
-pdfgui-gui = "pdfgui.gui:main"
+ebooktool = "ebooktool.cli:main"
 
 [build-system]
 requires = ["hatchling"]
