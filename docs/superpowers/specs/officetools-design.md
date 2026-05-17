@@ -30,7 +30,8 @@ OfficeTools/
 ├── pdfconcat/           # PDF concatenation
 ├── pdfocr/              # PDF OCR processing
 ├── pdfsplit/            # PDF splitting
-├── pdfgui/              # PDF GUI frontend
+├── docgui/              # Doc GUI frontend (PDF + ebook tools)
+├── ebooktool/           # Ebook format converter (epub, mobi ↔ md, txt, pdf)
 ├── mp4audio/            # MP4 audio extraction
 ├── mp4subs/             # MP4 subtitle extraction
 └── videogui/            # Video processing GUI

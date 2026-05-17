@@ -1,14 +1,18 @@
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-APP_NAME = "PDF Tools"
-APP_DIR = "Pdf Tools.app"
+APP_NAME = "Doc Tools"
+APP_DIR = "Doc Tools.app"
+
+OFFICE_ROOT = Path(
+    os.environ.get("OFFICE_ROOT", Path.home() / "projects/OfficeTools")
+)
 
 
 def _find_local_app() -> Path | None:
-    repo = Path(__file__).resolve().parent.parent.parent
-    candidate = repo / "apps" / APP_DIR
+    candidate = OFFICE_ROOT / "apps" / APP_DIR
     return candidate if candidate.is_dir() else None
 
 
@@ -32,23 +36,17 @@ def main() -> None:
 
     local = _find_local_app()
     if local:
-        answer = (
-            input(f"{APP_NAME}.app not registered. Copy to /Applications? [Y/n] ")
-            .strip()
-            .lower()
-        )
-        if answer in ("", "y", "yes"):
-            if _register(local):
-                subprocess.run(["open", "-a", APP_NAME])
-                return
-            print(f"Failed to copy {APP_DIR}.", file=sys.stderr)
-            sys.exit(1)
+        if _register(local):
+            subprocess.run(["open", "-a", APP_NAME])
+            return
+        print(f"Failed to copy {APP_DIR}.", file=sys.stderr)
+        sys.exit(1)
 
     print(
         f"{APP_NAME}.app not found.\n"
         f"  ditto 'apps/{APP_DIR}' '/Applications/{APP_DIR}'\n"
         f"  xattr -cr '/Applications/{APP_DIR}'\n"
-        f"Then run pdfgui again.",
+        f"Then run docgui again.",
         file=sys.stderr,
     )
     sys.exit(1)

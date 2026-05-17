@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 OFFICE_ROOT = Path(
-    os.environ.get("OFFICE_ROOT", Path.home() / "Documents/projects/OfficeTools")
+    os.environ.get("OFFICE_ROOT", Path.home() / "projects/OfficeTools")
 )
 
 

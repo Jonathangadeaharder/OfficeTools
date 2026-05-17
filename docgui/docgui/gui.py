@@ -8,10 +8,10 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk, scrolledtext
 
 
-class PDFTools:
+class DocTools:
     def __init__(self) -> None:
         self.root = tk.Tk()
-        self.root.title("PDF Tools")
+        self.root.title("Doc Tools")
         self.root.geometry("600x550")
         self.root.minsize(500, 450)
         self.root.configure(padx=12, pady=12)
@@ -45,7 +45,7 @@ class PDFTools:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] {message}\n"
         with open(self.log_file, "a") as f:
-            f.write(f"[PDFGui] {log_entry}")
+            f.write(f"[DocGui] {log_entry}")
 
         if hasattr(self, "log_area"):
             self.log_area.configure(state="normal")
@@ -55,7 +55,7 @@ class PDFTools:
 
     def _build_ui(self) -> None:
         # Selection
-        ttk.Button(self.root, text="Select PDFs...", command=self._select).grid(
+        ttk.Button(self.root, text="Select Documents...", command=self._select).grid(
             row=0, column=0, sticky="w", pady=(0, 8)
         )
 
@@ -126,13 +126,13 @@ class PDFTools:
         self.progress.grid(row=5, column=0, sticky="ew")
         self.progress["value"] = 0.1
 
-        self.status = ttk.Label(self.root, text="Select PDFs to begin...")
+        self.status = ttk.Label(self.root, text="Select documents to begin...")
         self.status.grid(row=6, column=0, sticky="w", pady=(4, 0))
 
     def _select(self) -> None:
         paths = filedialog.askopenfilenames(
-            title="Select PDFs",
-            filetypes=[("PDF files", "*.pdf")],
+            title="Select Documents",
+            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
         )
         for p in paths:
             if p not in self.listbox.get(0, "end"):
@@ -158,7 +158,7 @@ class PDFTools:
     def _run_tool(self, tool: str, label: str) -> None:
         files = self._get_files()
         if not files:
-            messagebox.showwarning("No Files", "Select PDFs first.")
+            messagebox.showwarning("No Files", "Select documents first.")
             return
 
         self._disable_buttons()
@@ -396,5 +396,5 @@ class PDFTools:
 
 
 def main() -> None:
-    app = PDFTools()
+    app = DocTools()
     app.run()
