@@ -2,6 +2,8 @@
 
 **Status:** Accepted
 
+**Authors:** Jonathan Gadea Harder
+**Reviewers:** Jonathan Gadea Harder
 **Context:** OfficeTools is a collection of CLI utilities for PDF manipulation, video processing, audio extraction, and subtitle management. Each tool has its own dependencies and could be installed independently. The project needs a consistent build and dependency management approach across all tools.
 
 **Decision:** Organize as a Python monorepo using `uv` for package management. Each tool is a separate directory with its own `pyproject.toml`, dependencies, and entry points. The `officetools/` package provides a unified CLI orchestrator that discovers and installs all tools.
