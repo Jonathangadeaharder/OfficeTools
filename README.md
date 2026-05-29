@@ -19,6 +19,7 @@ Collection of CLI and GUI tools for media processing: PDF, audio, video.
 | `mp4audio` | MP4 audio extraction |
 | `mp4subs` | MP4 subtitle extraction |
 | `videocrop` | Video cropping |
+| `videocompress` | Video compression |
 | `videogui` | Video tools GUI |
 
 ## Quick Start

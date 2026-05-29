@@ -75,6 +75,9 @@ class VideoTools:
             side="left", padx=(0, 6)
         )
         ttk.Button(btn_frame, text="Add Subtitles", command=self._add_subtitles).pack(
+            side="left", padx=(0, 6)
+        )
+        ttk.Button(btn_frame, text="Compress Video", command=self._compress_video).pack(
             side="left"
         )
 
@@ -240,6 +243,69 @@ class VideoTools:
         messagebox.showinfo("Complete", "Subtitles added successfully.")
         self.listbox.delete(0, "end")
         self._update_status()
+
+    def _compress_video(self) -> None:
+        files = self._get_files()
+        mp4s = [f for f in files if f.suffix.lower() == ".mp4"]
+        if not mp4s:
+            messagebox.showwarning("No MP4s", "Select at least one MP4 file.")
+            return
+
+        self._disable_buttons()
+        self.progress["mode"] = "indeterminate"
+        self.progress["maximum"] = len(mp4s)
+        self.progress["value"] = 0
+        self._log(f"Compressing {len(mp4s)} video file(s)")
+
+        self._proc_compress(mp4s, 0)
+
+    def _proc_compress(self, mp4s: list[Path], idx: int) -> None:
+        if idx >= len(mp4s):
+            self._log("Video compression batch complete")
+            self.progress.stop()
+            self.progress["mode"] = "determinate"
+            self.progress["value"] = len(mp4s)
+            self._enable_buttons()
+            self.listbox.delete(0, "end")
+            self._update_status()
+            messagebox.showinfo("Complete", f"Videos compressed: {len(mp4s)} file(s).")
+            return
+
+        f = mp4s[idx]
+        self.status.configure(text=f"Compressing {idx + 1}/{len(mp4s)}: {f.name}...")
+        self.progress["value"] = idx
+        self.progress.start(15)
+        self._log(f"Processing videocompress: {f}")
+
+        def _run() -> None:
+            try:
+                subprocess.run(
+                    ["videocompress", str(f)],
+                    check=True,
+                    text=True,
+                    capture_output=True,
+                )
+                ok = True
+            except subprocess.CalledProcessError:
+                ok = False
+
+            self.root.after(0, lambda: self._on_compress_done(ok, f, mp4s, idx))
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _on_compress_done(self, ok: bool, f: Path, mp4s: list[Path], idx: int) -> None:
+        self.progress.stop()
+        if not ok:
+            self._log(f"Error during videocompress on {f.name}")
+            self._enable_buttons()
+            self.progress["mode"] = "determinate"
+            messagebox.showerror("Error", f"Failed on {f.name}")
+            self._update_status()
+            return
+
+        self._log(f"Successfully completed videocompress: {f.name}")
+        self.progress["value"] = idx + 1
+        self._proc_compress(mp4s, idx + 1)
 
     def run(self) -> None:
         self.root.mainloop()
