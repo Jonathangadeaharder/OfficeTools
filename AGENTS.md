@@ -3,6 +3,7 @@
 ## Build & Test Commands
 
 ```bash
+# Per-tool (run from tool directory, e.g. cd pdfcompress)
 uv sync
 uv run pytest
 uvx ruff check

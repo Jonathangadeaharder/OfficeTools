@@ -43,6 +43,7 @@ jobs:
           - pdfocr
           - pdfsplit
           - videogui
+          - videocompress
     defaults:
       run:
         working-directory: ${{ matrix.package }}

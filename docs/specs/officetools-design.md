@@ -34,6 +34,7 @@ OfficeTools/
 ├── ebooktool/           # Ebook format converter (epub, mobi ↔ md, txt, pdf)
 ├── mp4audio/            # MP4 audio extraction
 ├── mp4subs/             # MP4 subtitle extraction
+├── videocompress/       # Video compression
 └── videogui/            # Video processing GUI
 ```
 
