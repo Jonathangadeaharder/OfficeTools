@@ -1,6 +1,6 @@
 # OfficeTools
 
-Collection of CLI and GUI tools for media processing: PDF, audio, video.
+Collection of CLI and GUI tools for PDF, audio, video, and ebook processing. Each tool is an independent Python package with its own `pyproject.toml`.
 
 ## Tools
 
@@ -11,23 +11,24 @@ Collection of CLI and GUI tools for media processing: PDF, audio, video.
 | `pdfconcat` | PDF concatenation |
 | `pdfsplit` | PDF splitting |
 | `pdfocr` | PDF OCR |
-| `pdfgui` | PDF tools GUI |
-| `audiocompress` | Audio compression |
-| `audioconvert` | Audio format conversion |
-| `audiocrop` | Audio cropping |
-| `audiogui` | Audio tools GUI |
+| `docgui` | PDF tools GUI |
+| `ebooktool` | Ebook conversion/processing |
 | `mp4audio` | MP4 audio extraction |
 | `mp4subs` | MP4 subtitle extraction |
-| `videocrop` | Video cropping |
 | `videocompress` | Video compression |
 | `videogui` | Video tools GUI |
 
 ## Quick Start
 
+Each tool is standalone. Run individually:
+
 ```bash
+cd <tool-name>
 uv sync
 uv run <tool-name> --help
 ```
+
+The `officetools/` package is a shared utility library used by multiple tools.
 
 ## Development
 
