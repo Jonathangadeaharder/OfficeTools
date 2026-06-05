@@ -11,7 +11,7 @@ Collection of CLI and GUI tools for PDF, audio, video, and ebook processing. Eac
 | `pdfconcat` | PDF concatenation |
 | `pdfsplit` | PDF splitting |
 | `pdfocr` | PDF OCR |
-| `docgui` | PDF tools GUI |
+| `docgui` | Doc tools GUI |
 | `ebooktool` | Ebook conversion/processing |
 | `mp4audio` | MP4 audio extraction |
 | `mp4subs` | MP4 subtitle extraction |
@@ -28,7 +28,7 @@ uv sync
 uv run <tool-name> --help
 ```
 
-The `officetools/` package is a shared utility library used by multiple tools.
+The `officetools/` package is the orchestrator CLI for discovering, installing, and listing all tools.
 
 ## Development
 

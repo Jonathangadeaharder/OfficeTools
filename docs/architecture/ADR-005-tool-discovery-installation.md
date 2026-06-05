@@ -6,7 +6,7 @@
 **Reviewers:** Jonathan Gadea Harder
 **Context:** The orchestrator must reliably discover all tool packages and install them. The discovery mechanism should not require manual registration of new tools.
 
-**Decision:** The orchestrator discovers tools by iterating sibling directories of the officetools package root, looking for directories containing a `pyproject.toml` with `[project.scripts]`. The `OFFICE_ROOT` environment variable (defaulting to `~/Documents/projects/OfficeTools`) allows overriding the search path.
+**Decision:** The orchestrator discovers tools by iterating sibling directories of the officetools package root, looking for directories containing a `pyproject.toml` with `[project.scripts]`. The `OFFICE_ROOT` environment variable (defaulting to `~/projects/OfficeTools`) allows overriding the search path.
 
 **Consequences:**
 - Positive: Adding a new tool = creating a directory with pyproject.toml
