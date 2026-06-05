@@ -35,7 +35,6 @@ def convert(input_path: Path, output_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 def _from_epub(input_path: Path, output_path: Path, out_ext: str) -> None:
-    import ebooklib
     from ebooklib import epub
 
     book = epub.read_epub(str(input_path))
@@ -180,7 +179,6 @@ def _mobi_to_text_calibre(input_path: Path) -> str | None:
 # ---------------------------------------------------------------------------
 
 def _to_epub(input_path: Path, output_path: Path) -> None:
-    import ebooklib
     from ebooklib import epub
 
     book = epub.EpubBook()
