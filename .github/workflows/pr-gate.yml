@@ -57,7 +57,7 @@ jobs:
       - name: Lint with ruff
         run: uvx ruff check
       - name: Type check with pyright
-        run: uvx pyright
+        run: uv run pyright
       - name: Check for tests
         id: check-tests
         run: |
