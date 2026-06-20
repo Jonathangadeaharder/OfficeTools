@@ -1,8 +1,12 @@
+import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
+import ebooklib
+import markdown
+from ebooklib import epub
 from fpdf import FPDF
 
 INPUT_FORMATS = {".epub", ".mobi"}
@@ -34,9 +38,8 @@ def convert(input_path: Path, output_path: Path) -> None:
 # EPUB -> *
 # ---------------------------------------------------------------------------
 
-def _from_epub(input_path: Path, output_path: Path, out_ext: str) -> None:
-    from ebooklib import epub
 
+def _from_epub(input_path: Path, output_path: Path, out_ext: str) -> None:
     book = epub.read_epub(str(input_path))
 
     if out_ext == ".md":
@@ -48,8 +51,6 @@ def _from_epub(input_path: Path, output_path: Path, out_ext: str) -> None:
 
 
 def _epub_to_md(book, output_path: Path) -> None:
-    import ebooklib
-
     lines: list[str] = []
     title = book.get_metadata("DC", "title")
     if title:
@@ -61,7 +62,9 @@ def _epub_to_md(book, output_path: Path) -> None:
             text = _html_to_text(content)
             name = item.get_name()
             chapter_title = _guess_chapter_title(name, content)
-            if chapter_title and chapter_title.lower() not in (t.lower() for t in text.split("\n")[:3]):
+            if chapter_title and chapter_title.lower() not in (
+                t.lower() for t in text.split("\n")[:3]
+            ):
                 lines.append(f"\n## {chapter_title}\n")
             lines.append(text)
 
@@ -71,8 +74,6 @@ def _epub_to_md(book, output_path: Path) -> None:
 
 
 def _epub_to_txt(book, output_path: Path) -> None:
-    import ebooklib
-
     lines: list[str] = []
     for item in book.get_items():
         if item.get_type() == ebooklib.ITEM_DOCUMENT:
@@ -85,8 +86,6 @@ def _epub_to_txt(book, output_path: Path) -> None:
 
 
 def _epub_to_pdf(book, output_path: Path) -> None:
-    import ebooklib
-
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -126,6 +125,7 @@ def _epub_to_pdf(book, output_path: Path) -> None:
 # MOBI -> *
 # ---------------------------------------------------------------------------
 
+
 def _from_mobi(input_path: Path, output_path: Path, out_ext: str) -> None:
     text = _mobi_to_text(input_path)
     if text is None:
@@ -146,6 +146,7 @@ def _from_mobi(input_path: Path, output_path: Path, out_ext: str) -> None:
 def _mobi_to_text(input_path: Path) -> str | None:
     try:
         import mobi  # type: ignore[reportMissingImports]
+
         with tempfile.TemporaryDirectory() as tmp:
             tempdir, filepath = mobi.extract(str(input_path), tmpdir=tmp)
             if filepath:
@@ -165,7 +166,9 @@ def _mobi_to_text_calibre(input_path: Path) -> str | None:
             out = Path(tmp) / "output.txt"
             subprocess.run(
                 ["ebook-convert", str(input_path), str(out)],
-                capture_output=True, text=True, timeout=120,
+                capture_output=True,
+                text=True,
+                timeout=120,
             )
             if out.exists():
                 return out.read_text(encoding="utf-8", errors="replace")
@@ -178,9 +181,8 @@ def _mobi_to_text_calibre(input_path: Path) -> str | None:
 # * -> EPUB
 # ---------------------------------------------------------------------------
 
-def _to_epub(input_path: Path, output_path: Path) -> None:
-    from ebooklib import epub
 
+def _to_epub(input_path: Path, output_path: Path) -> None:
     book = epub.EpubBook()
     book.set_identifier(str(output_path.stem))
     book.set_title(output_path.stem)
@@ -192,7 +194,9 @@ def _to_epub(input_path: Path, output_path: Path) -> None:
         chapters = _split_markdown_chapters(text)
         for i, (title, body) in enumerate(chapters):
             c = epub.EpubHtml(title=title, file_name=f"chap_{i}.xhtml", lang="en")
-            c.content = f"<h1>{title}</h1>\n{_md_to_html(body)}" if title else _md_to_html(body)
+            c.content = (
+                f"<h1>{title}</h1>\n{_md_to_html(body)}" if title else _md_to_html(body)
+            )
             book.add_item(c)
             book.toc.append(c)
             book.spine.append(c)
@@ -219,11 +223,18 @@ def _pdf_to_epub(input_path: Path, output_path: Path) -> None:
     try:
         subprocess.run(
             ["pdf2md", str(input_path), "-o", str(md_path)],
-            capture_output=True, text=True, check=True, timeout=300,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=300,
         )
         if md_path.exists():
             _to_epub(md_path, output_path)
-    except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError) as e:
+    except (
+        FileNotFoundError,
+        subprocess.TimeoutExpired,
+        subprocess.CalledProcessError,
+    ) as e:
         print(f"  pdf2md failed: {e}", file=sys.stderr)
     finally:
         md_path.unlink(missing_ok=True)
@@ -233,6 +244,7 @@ def _pdf_to_epub(input_path: Path, output_path: Path) -> None:
 # * -> MOBI
 # ---------------------------------------------------------------------------
 
+
 def _to_mobi(input_path: Path, output_path: Path) -> None:
     try:
         with tempfile.TemporaryDirectory() as tmp:
@@ -241,7 +253,9 @@ def _to_mobi(input_path: Path, output_path: Path) -> None:
             if epub_path.exists():
                 subprocess.run(
                     ["ebook-convert", str(epub_path), str(output_path)],
-                    capture_output=True, text=True, timeout=120,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
                 )
                 if output_path.exists():
                     kb = output_path.stat().st_size / 1024
@@ -249,7 +263,10 @@ def _to_mobi(input_path: Path, output_path: Path) -> None:
                     return
         print("  mobi output requires calibre (ebook-convert)", file=sys.stderr)
     except FileNotFoundError:
-        print("  mobi output requires calibre: install with `brew install calibre`", file=sys.stderr)
+        print(
+            "  mobi output requires calibre: install with `brew install calibre`",
+            file=sys.stderr,
+        )
     except subprocess.TimeoutExpired:
         print("  calibre timed out", file=sys.stderr)
 
@@ -257,6 +274,7 @@ def _to_mobi(input_path: Path, output_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # * -> TXT / PDF
 # ---------------------------------------------------------------------------
+
 
 def _text_to_pdf(text: str, output_path: Path) -> None:
     pdf = FPDF()
@@ -276,8 +294,8 @@ def _text_to_pdf(text: str, output_path: Path) -> None:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _html_to_text(html: str) -> str:
-    import re
     text = re.sub(r"<style[^>]*>.*?</style>", "", html, flags=re.DOTALL)
     text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL)
     text = re.sub(r"<br\s*/?>", "\n", text)
@@ -294,12 +312,10 @@ def _html_to_text(html: str) -> str:
 
 
 def _md_to_html(md: str) -> str:
-    import markdown
     return markdown.markdown(md, extensions=["extra"])
 
 
 def _guess_chapter_title(name: str, content: str) -> str | None:
-    import re
     m = re.search(r"<h[1-6][^>]*>(.*?)</h[1-6]>", content, re.DOTALL)
     if m:
         return re.sub(r"<[^>]+>", "", m.group(1)).strip()
@@ -310,7 +326,6 @@ def _guess_chapter_title(name: str, content: str) -> str | None:
 
 
 def _split_markdown_chapters(text: str) -> list[tuple[str, str]]:
-    import re
     chapters: list[tuple[str, str]] = []
     lines = text.split("\n")
     current_title = ""
@@ -335,7 +350,6 @@ def _split_markdown_chapters(text: str) -> list[tuple[str, str]]:
 
 
 def _strip_markdown(text: str) -> str:
-    import re
     text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
     text = re.sub(r"[*_]{1,3}", "", text)
     text = re.sub(r"`{1,3}[^`]*`{1,3}", "", text)
