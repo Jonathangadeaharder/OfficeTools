@@ -4,7 +4,6 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "docling[vlm]",
-    "fpdf2>=2.8.7",
     "mlx-vlm",
 ]
 

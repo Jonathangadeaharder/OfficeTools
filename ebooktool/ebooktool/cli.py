@@ -10,8 +10,17 @@ def main() -> None:
         description="Convert ebook formats (epub, mobi) to/from md, txt, pdf.",
     )
     parser.add_argument("input", type=Path, help="Input file")
-    parser.add_argument("-o", "--output", type=Path, help="Output path (detected from extension if omitted)")
-    parser.add_argument("--to", choices=["md", "txt", "pdf", "epub", "mobi"], help="Target format (auto-detected from --output or input basename)")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help="Output path (detected from extension if omitted)",
+    )
+    parser.add_argument(
+        "--to",
+        choices=["md", "txt", "pdf", "epub", "mobi"],
+        help="Target format (auto-detected from --output or input basename)",
+    )
     args = parser.parse_args()
 
     input_path = args.input
