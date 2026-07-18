@@ -16,6 +16,7 @@ Collection of CLI and GUI tools for PDF, audio, video, and ebook processing. Eac
 | `mp4audio` | MP4 audio extraction |
 | `mp4subs` | MP4 subtitle extraction |
 | `videocompress` | Video compression |
+| `videoconvert` | Video format conversion |
 | `videogui` | Video tools GUI |
 
 ## Quick Start
