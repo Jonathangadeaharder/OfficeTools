@@ -5,13 +5,29 @@ import datetime
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
+VIDEO_EXTENSIONS = {
+    ".mp4",
+    ".mkv",
+    ".mov",
+    ".avi",
+    ".webm",
+    ".wmv",
+    ".flv",
+    ".m4v",
+    ".mpg",
+    ".mpeg",
+    ".ts",
+    ".3gp",
+}
+CONVERT_FORMATS = ["mp4", "mkv", "mov", "avi", "webm", "wmv", "flv"]
+
 
 class VideoTools:
     def __init__(self) -> None:
         self.root = tk.Tk()
         self.root.title("Video Tools")
-        self.root.geometry("520x400")
-        self.root.minsize(440, 320)
+        self.root.geometry("620x420")
+        self.root.minsize(520, 340)
         self.root.configure(padx=12, pady=12)
 
         style = ttk.Style()
@@ -81,18 +97,48 @@ class VideoTools:
             side="left"
         )
 
+        convert_frame = ttk.Frame(self.root)
+        convert_frame.grid(row=4, column=0, sticky="w", pady=(0, 6))
+
+        ttk.Label(convert_frame, text="Format:").pack(side="left", padx=(0, 4))
+        self.format_var = tk.StringVar(value=CONVERT_FORMATS[0])
+        self.format_combo = ttk.Combobox(
+            convert_frame,
+            textvariable=self.format_var,
+            values=CONVERT_FORMATS,
+            width=6,
+            state="readonly",
+        )
+        self.format_combo.pack(side="left", padx=(0, 6))
+        ttk.Button(convert_frame, text="Convert", command=self._convert_video).pack(
+            side="left"
+        )
+
         self.progress = ttk.Progressbar(
             self.root, orient="horizontal", mode="determinate"
         )
-        self.progress.grid(row=4, column=0, sticky="ew", pady=(8, 0))
+        self.progress.grid(row=5, column=0, sticky="ew", pady=(8, 0))
 
         self.status = ttk.Label(self.root, text="Select files to begin...")
-        self.status.grid(row=5, column=0, sticky="w", pady=(4, 0))
+        self.status.grid(row=6, column=0, sticky="w", pady=(4, 0))
 
     def _select(self) -> None:
         paths = filedialog.askopenfilenames(
             title="Select Files",
-            filetypes=[("Video files", "*.mp4"), ("Subtitle files", "*.srt")],
+            filetypes=[
+                (
+                    "Video files",
+                    "*.mp4 *.mkv *.mov *.avi *.webm *.wmv *.flv "
+                    "*.m4v *.mpg *.mpeg *.ts *.3gp",
+                ),
+                ("MP4 files", "*.mp4"),
+                ("MKV files", "*.mkv"),
+                ("MOV files", "*.mov"),
+                ("AVI files", "*.avi"),
+                ("WebM files", "*.webm"),
+                ("Subtitle files", "*.srt"),
+                ("All files", "*.*"),
+            ],
         )
         for p in paths:
             if p not in self.listbox.get(0, "end"):
@@ -306,6 +352,74 @@ class VideoTools:
         self._log(f"Successfully completed videocompress: {f.name}")
         self.progress["value"] = idx + 1
         self._proc_compress(mp4s, idx + 1)
+
+    def _convert_video(self) -> None:
+        files = self._get_files()
+        videos = [f for f in files if f.suffix.lower() in VIDEO_EXTENSIONS]
+        if not videos:
+            messagebox.showwarning("No Videos", "Select at least one video file.")
+            return
+
+        fmt = self.format_var.get()
+        self._disable_buttons()
+        self.progress["mode"] = "indeterminate"
+        self.progress["maximum"] = len(videos)
+        self.progress["value"] = 0
+        self._log(f"Converting {len(videos)} file(s) to {fmt}")
+
+        self._proc_convert(videos, fmt, 0)
+
+    def _proc_convert(self, videos: list[Path], fmt: str, idx: int) -> None:
+        if idx >= len(videos):
+            self._log("Video conversion batch complete")
+            self.progress.stop()
+            self.progress["mode"] = "determinate"
+            self.progress["value"] = len(videos)
+            self._enable_buttons()
+            self.listbox.delete(0, "end")
+            self._update_status()
+            messagebox.showinfo(
+                "Complete", f"Converted {len(videos)} file(s) to {fmt}."
+            )
+            return
+
+        f = videos[idx]
+        self.status.configure(text=f"Converting {idx + 1}/{len(videos)}: {f.name}...")
+        self.progress["value"] = idx
+        self.progress.start(15)
+        self._log(f"Processing videoconvert: {f} -> {fmt}")
+
+        def _run() -> None:
+            try:
+                subprocess.run(
+                    ["videoconvert", str(f), "-f", fmt],
+                    check=True,
+                    text=True,
+                    capture_output=True,
+                )
+                ok = True
+            except subprocess.CalledProcessError:
+                ok = False
+
+            self.root.after(0, lambda: self._on_convert_done(ok, f, videos, fmt, idx))
+
+        threading.Thread(target=_run, daemon=True).start()
+
+    def _on_convert_done(
+        self, ok: bool, f: Path, videos: list[Path], fmt: str, idx: int
+    ) -> None:
+        self.progress.stop()
+        if not ok:
+            self._log(f"Error during videoconvert on {f.name}")
+            self._enable_buttons()
+            self.progress["mode"] = "determinate"
+            messagebox.showerror("Error", f"Failed on {f.name}")
+            self._update_status()
+            return
+
+        self._log(f"Successfully converted: {f.name} -> {fmt}")
+        self.progress["value"] = idx + 1
+        self._proc_convert(videos, fmt, idx + 1)
 
     def run(self) -> None:
         self.root.mainloop()
