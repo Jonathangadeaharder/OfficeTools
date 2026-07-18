@@ -17,7 +17,7 @@ SUPPORTED_FORMATS = list(FORMAT_CODECS.keys())
 
 def _check_ffmpeg() -> None:
     if not shutil.which("ffmpeg"):
-        raise SystemExit("ffmpeg not found. Install: brew install ffmpeg")
+        raise FileNotFoundError("ffmpeg not found. Install: brew install ffmpeg")
 
 
 def _format_size(n_bytes: float) -> str:
@@ -71,11 +71,17 @@ def convert_video(
             str(output_path),
         ]
 
-    subprocess.run(cmd, check=True, capture_output=True)
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            f"ffmpeg failed on {input_path.name}: "
+            f"{e.stderr.strip() if e.stderr else e}"
+        ) from e
 
     original = input_path.stat().st_size
     result = output_path.stat().st_size
-    delta = (result / original - 1) * 100
+    delta = ((result / original - 1) * 100) if original > 0 else 0.0
 
     print(
         f"  {input_path.name} -> {output_path.name}: "

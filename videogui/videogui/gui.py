@@ -398,8 +398,9 @@ class VideoTools:
                     capture_output=True,
                 )
                 ok = True
-            except subprocess.CalledProcessError:
+            except Exception as e:
                 ok = False
+                self._log(f"Exception during videoconvert on {f.name}: {e}")
 
             self.root.after(0, lambda: self._on_convert_done(ok, f, videos, fmt, idx))
 

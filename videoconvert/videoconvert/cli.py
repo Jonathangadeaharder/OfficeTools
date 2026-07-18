@@ -1,6 +1,6 @@
 import argparse
 import os
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from .convert import SUPPORTED_FORMATS, convert_video
@@ -36,8 +36,8 @@ def main() -> None:
 
     valid = []
     for path in args.files:
-        if not path.exists():
-            print(f"  Skipping: {path} not found")
+        if not path.is_file():
+            print(f"  Skipping: {path} is not a file or does not exist")
             continue
         valid.append(path)
 
@@ -47,7 +47,7 @@ def main() -> None:
     cpu = os.cpu_count() or 1
     max_workers = max(1, min(int(cpu**0.5), len(valid)))
 
-    with ProcessPoolExecutor(max_workers=max_workers) as pool:
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
         futures = {}
         for path in valid:
             output = args.output if args.output and len(valid) == 1 else None
