@@ -183,7 +183,7 @@ class DocTools:
     def _get_files(self) -> list[Path]:
         return [Path(self.listbox.get(i)) for i in range(self.listbox.size())]
 
-    def _run_tool(self, tool: str, label: str, extra_args: list[str] = None) -> None:
+    def _run_tool(self, tool: str, label: str, extra_args: list[str] | None = None) -> None:
         files = self._get_files()
         if not files:
             messagebox.showwarning("No Files", "Select documents first.")
@@ -207,7 +207,7 @@ class DocTools:
         tool: str,
         label: str,
         idx: int,
-        extra_args: list[str] = None,
+        extra_args: list[str] | None = None,
     ) -> None:
         if idx >= len(files):
             self._log(f"Batch {label} complete")
@@ -328,7 +328,7 @@ class DocTools:
         tool: str,
         label: str,
         idx: int,
-        extra_args: list[str] = None,
+        extra_args: list[str] | None = None,
     ) -> None:
         if not ok:
             self._log(f"ERROR: {label} failed on {f.name}: {err_msg}")
