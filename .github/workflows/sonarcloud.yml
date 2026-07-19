@@ -1,23 +1,58 @@
-name: SonarCloud
+name: SonarQube
+
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+
 jobs:
-  sonar:
-    name: SonarCloud Analysis
-    runs-on: ubuntu-latest
+  sonarqube:
+    name: SonarQube
+    runs-on: [self-hosted, macOS, ARM64, OfficeToolsTM, pr-gate]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        with:
-          args: >
-            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-            -Dsonar.pullrequest.branch=${{ github.head_ref }}
-            -Dsonar.pullrequest.base=${{ github.base_ref }}
+
+      - name: Wait for SonarQube
+        run: |
+          for i in $(seq 1 36); do
+            STATUS=$(curl -sf --max-time 2 "$SONAR_HOST_URL/api/system/status" \
+              | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' || true)
+            echo "Sonar status: ${STATUS:-unreachable} ($i/36)"
+            if [ "$STATUS" = "UP" ]; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::SonarQube at $SONAR_HOST_URL never became UP"
+          exit 1
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: SonarQube Scan
+        # No sonar.pullrequest.* args: Community Build rejects them
+        # (Developer Edition feature). PR scans analyze the head as the
+        # single tracked branch; main re-scan after merge self-corrects.
+        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602  # nosemgrep
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Print failing quality gate conditions
+        if: failure()
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          curl -sS --max-time 10 -u "$SONAR_TOKEN:" \
+            "$SONAR_HOST_URL/api/qualitygates/project_status?projectKey=Jonathangadeaharder_OfficeTools" \
+            | jq '.projectStatus.conditions[] | select(.status=="ERROR")' || true
+          curl -sS --max-time 10 -u "$SONAR_TOKEN:" \
+            "$SONAR_HOST_URL/api/issues/search?componentKeys=Jonathangadeaharder_OfficeTools&inNewCodePeriod=true&resolved=false&ps=100" \
+            | jq -r '.issues[] | "ISSUE \(.severity) \(.rule) \(.component | sub("Jonathangadeaharder_OfficeTools:";"")):\(.line // 0) \(.message)"' || true
+          curl -sS --max-time 10 -u "$SONAR_TOKEN:" \
+            "$SONAR_HOST_URL/api/hotspots/search?projectKey=Jonathangadeaharder_OfficeTools&inNewCodePeriod=true&ps=100" \
+            | jq -r '.hotspots[] | "HOTSPOT \(.vulnerabilityProbability) \(.securityCategory) \(.component | sub("Jonathangadeaharder_OfficeTools:";"")):\(.line // 0) \(.message)"' || true
