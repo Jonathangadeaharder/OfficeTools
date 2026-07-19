@@ -52,7 +52,7 @@ Single-process CLI/GUI tools -- no server or concurrent access concerns. Perform
 
 ## Operations & DevOps
 
-CI/CD pipeline is in place with 3 GitHub Actions workflows. pr-gate.yml runs per-package lint (ruff), type check (pyright), tests (pytest with 90% branch coverage gate), Trivy dependency scan, and Gitleaks secret scan on pull requests. merge-gate.yml adds CodeQL SAST on push to main. sonarcloud.yml runs SonarCloud analysis. No release automation. macOS .app bundles likely not notarized. No Homebrew formula or other distribution channel beyond git clone. No Dockerfile. No Makefile at repository level.
+CI/CD pipeline is in place with 3 GitHub Actions workflows. pr-gate.yml runs per-package lint (ruff), type check (pyright), tests (pytest with 90% branch coverage gate), Trivy dependency scan, and Gitleaks secret scan on pull requests. merge-gate.yml adds CodeQL SAST on push to main. sonarcloud.yml runs local SonarQube (Community Build 26.4) analysis on a dedicated self-hosted runner. No release automation. macOS .app bundles likely not notarized. No Homebrew formula or other distribution channel beyond git clone. No Dockerfile. No Makefile at repository level.
 
 ## Dependencies & Third-Party Risk
 
