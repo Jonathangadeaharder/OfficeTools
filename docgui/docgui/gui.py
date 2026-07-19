@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk, scrolledtext
 
+CONVERT_FORMATS = ["md", "txt", "pdf", "epub", "mobi"]
+
 
 class DocTools:
     def __init__(self) -> None:
@@ -21,7 +23,7 @@ class DocTools:
 
         # Layout weights
         self.root.grid_rowconfigure(1, weight=1)  # listbox expands
-        self.root.grid_rowconfigure(4, weight=1)  # log expands
+        self.root.grid_rowconfigure(5, weight=1)  # log expands
         self.root.grid_columnconfigure(0, weight=1)
 
         self._setup_logging()
@@ -101,9 +103,27 @@ class DocTools:
         )
         ttk.Button(btn_frame, text="Split", command=self._split).pack(side="left")
 
+        # Convert Tools Frame
+        convert_frame = ttk.Frame(self.root)
+        convert_frame.grid(row=4, column=0, sticky="w", pady=(0, 8))
+
+        ttk.Label(convert_frame, text="Convert to:").pack(side="left", padx=(0, 4))
+        self.format_var = tk.StringVar(value=CONVERT_FORMATS[0])
+        self.format_combo = ttk.Combobox(
+            convert_frame,
+            textvariable=self.format_var,
+            values=CONVERT_FORMATS,
+            width=6,
+            state="readonly",
+        )
+        self.format_combo.pack(side="left", padx=(0, 6))
+        ttk.Button(convert_frame, text="Convert", command=self._convert).pack(
+            side="left"
+        )
+
         # Log Area (Information requested by user)
         log_frame = ttk.LabelFrame(self.root, text="Process Output")
-        log_frame.grid(row=4, column=0, sticky="nsew", pady=(0, 8))
+        log_frame.grid(row=5, column=0, sticky="nsew", pady=(0, 8))
         log_frame.grid_rowconfigure(0, weight=1)
         log_frame.grid_columnconfigure(0, weight=1)
 
@@ -123,16 +143,24 @@ class DocTools:
         self.progress = ttk.Progressbar(
             self.root, orient="horizontal", mode="determinate", maximum=100
         )
-        self.progress.grid(row=5, column=0, sticky="ew")
+        self.progress.grid(row=6, column=0, sticky="ew")
         self.progress["value"] = 0.1
 
         self.status = ttk.Label(self.root, text="Select documents to begin...")
-        self.status.grid(row=6, column=0, sticky="w", pady=(4, 0))
+        self.status.grid(row=7, column=0, sticky="w", pady=(4, 0))
 
     def _select(self) -> None:
         paths = filedialog.askopenfilenames(
             title="Select Documents",
-            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
+            filetypes=[
+                ("Document files", "*.pdf *.epub *.mobi *.txt *.md"),
+                ("PDF files", "*.pdf"),
+                ("EPUB files", "*.epub"),
+                ("MOBI files", "*.mobi"),
+                ("Text files", "*.txt"),
+                ("Markdown files", "*.md"),
+                ("All files", "*.*"),
+            ],
         )
         for p in paths:
             if p not in self.listbox.get(0, "end"):
@@ -155,7 +183,7 @@ class DocTools:
     def _get_files(self) -> list[Path]:
         return [Path(self.listbox.get(i)) for i in range(self.listbox.size())]
 
-    def _run_tool(self, tool: str, label: str) -> None:
+    def _run_tool(self, tool: str, label: str, extra_args: list[str] | None = None) -> None:
         files = self._get_files()
         if not files:
             messagebox.showwarning("No Files", "Select documents first.")
@@ -171,9 +199,123 @@ class DocTools:
 
         self._log(f"Running {label} on {len(files)} file(s)")
 
-        self._proc_files(files, tool, label, 0)
+        self._proc_files(files, tool, label, 0, extra_args=extra_args)
 
-    def _proc_files(self, files: list[Path], tool: str, label: str, idx: int) -> None:
+    def _set_progress(self, val_within_file: float, idx: int, total: int) -> None:
+        # Scale 0-100% within file to its portion of the batch
+        # Cap at 98% to avoid jumping to next file prematurely
+        p_val = min(val_within_file, 98.0)
+        base = (idx / total) * 100
+        weight = 100.0 / total
+        self.progress["value"] = max(base + (p_val / 100.0) * weight, 0.1)
+
+    def _log_and_parse_progress(self, line: str, idx: int, total: int) -> None:
+        self._log(line)
+
+        # PROGRESS: lines take priority — direct percentage
+        if line.startswith("PROGRESS:"):
+            try:
+                p = float(line.split(":")[1].strip())
+                self._set_progress(p, idx, total)
+                return
+            except (ValueError, IndexError):
+                pass
+
+        # Parse percentage
+        m = re.search(r"(\d+)%", line)
+        if m:
+            try:
+                p = float(m.group(1))
+                if "Loading weights" in line or "Loading models" in line:
+                    self._set_progress(p * 0.15, idx, total)
+                else:
+                    self._set_progress(p, idx, total)
+            except ValueError:
+                pass
+        elif "[DOCLING] Starting" in line:
+            self._set_progress(2.0, idx, total)
+        elif "Processing document" in line:
+            self._set_progress(20.0, idx, total)
+        elif "[DOCLING] Exporting" in line:
+            self._set_progress(90.0, idx, total)
+        elif "\u2713" in line and "KB markdown" in line:
+            self._set_progress(100.0, idx, total)
+
+    def _run_process_thread(
+        self,
+        tool: str,
+        f: Path,
+        files: list[Path],
+        label: str,
+        idx: int,
+        extra_args: list[str] | None,
+    ) -> None:
+        try:
+            env = os.environ.copy()
+            env["PYTHONUNBUFFERED"] = "1"
+
+            cmd = [tool, str(f)]
+            if extra_args:
+                cmd.extend(extra_args)
+
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                env=env,
+            )
+
+            if process.stdout:
+                buffer = ""
+                while True:
+                    char = process.stdout.read(1)
+                    if not char:
+                        if buffer:
+                            line = buffer.strip()
+                            if line:
+                                self.root.after(
+                                    0,
+                                    lambda ln=line: self._log_and_parse_progress(
+                                        ln, idx, len(files)
+                                    ),
+                                )
+                        break
+                    buffer += char
+                    if char in ("\r", "\n"):
+                        line = buffer.strip()
+                        if line:
+                            self.root.after(
+                                0,
+                                lambda ln=line: self._log_and_parse_progress(
+                                    ln, idx, len(files)
+                                ),
+                            )
+                        buffer = ""
+
+            process.wait()
+            ok = process.returncode == 0
+            err_msg = f"Exit code: {process.returncode}" if not ok else ""
+        except Exception as e:
+            ok = False
+            err_msg = str(e)
+
+        self.root.after(
+            0,
+            lambda: self._on_file_done(
+                ok, err_msg, f, files, tool, label, idx, extra_args=extra_args
+            ),
+        )
+
+    def _proc_files(
+        self,
+        files: list[Path],
+        tool: str,
+        label: str,
+        idx: int,
+        extra_args: list[str] | None = None,
+    ) -> None:
         if idx >= len(files):
             self._log(f"Batch {label} complete")
             self.progress.configure(value=100)
@@ -193,89 +335,11 @@ class DocTools:
         base_val = (idx / len(files)) * 100
         self.progress["value"] = max(base_val, 0.1)
 
-        def _set_progress(val_within_file: float) -> None:
-            # Scale 0-100% within file to its portion of the batch
-            # Cap at 98% to avoid jumping to next file prematurely
-            p_val = min(val_within_file, 98.0)
-            base = (idx / len(files)) * 100
-            weight = 100.0 / len(files)
-            self.progress["value"] = max(base + (p_val / 100.0) * weight, 0.1)
-
-        def _log_line(line: str) -> None:
-            self._log(line)
-
-            # PROGRESS: lines take priority — direct percentage
-            if line.startswith("PROGRESS:"):
-                try:
-                    p = float(line.split(":")[1].strip())
-                    _set_progress(p)
-                    return
-                except (ValueError, IndexError):
-                    pass
-
-            # Parse percentage
-            m = re.search(r"(\d+)%", line)
-            if m:
-                try:
-                    p = float(m.group(1))
-                    if "Loading weights" in line or "Loading models" in line:
-                        _set_progress(p * 0.15)
-                    else:
-                        _set_progress(p)
-                except ValueError:
-                    pass
-            elif "[DOCLING] Starting" in line:
-                _set_progress(2.0)
-            elif "Processing document" in line:
-                _set_progress(20.0)
-            elif "[DOCLING] Exporting" in line:
-                _set_progress(90.0)
-            elif "\u2713" in line and "KB markdown" in line:
-                _set_progress(100.0)
-
-        def _run() -> None:
-            try:
-                env = os.environ.copy()
-                env["PYTHONUNBUFFERED"] = "1"
-
-                process = subprocess.Popen(
-                    [tool, str(f)],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
-                    env=env,
-                )
-
-                if process.stdout:
-                    buffer = ""
-                    while True:
-                        char = process.stdout.read(1)
-                        if not char:
-                            if buffer:
-                                line = buffer.strip()
-                                if line:
-                                    self.root.after(0, lambda ln=line: _log_line(ln))
-                            break
-                        buffer += char
-                        if char in ("\r", "\n"):
-                            line = buffer.strip()
-                            if line:
-                                self.root.after(0, lambda ln=line: _log_line(ln))
-                            buffer = ""
-
-                process.wait()
-                ok = process.returncode == 0
-                err_msg = f"Exit code: {process.returncode}" if not ok else ""
-            except Exception as e:
-                ok = False
-                err_msg = str(e)
-
-            self.root.after(
-                0, lambda: self._on_file_done(ok, err_msg, f, files, tool, label, idx)
-            )
-
-        threading.Thread(target=_run, daemon=True).start()
+        threading.Thread(
+            target=self._run_process_thread,
+            args=(tool, f, files, label, idx, extra_args),
+            daemon=True,
+        ).start()
 
     def _on_file_done(
         self,
@@ -286,6 +350,7 @@ class DocTools:
         tool: str,
         label: str,
         idx: int,
+        extra_args: list[str] | None = None,
     ) -> None:
         if not ok:
             self._log(f"ERROR: {label} failed on {f.name}: {err_msg}")
@@ -295,7 +360,9 @@ class DocTools:
             return
 
         self._log(f"SUCCESS: {label} completed for {f.name}")
-        self._proc_files(files, tool, label, idx + 1)
+        self._proc_files(
+            files, tool, label, idx + 1, extra_args=extra_args
+        )
 
     def _disable_buttons(self) -> None:
         self._set_buttons_state("disabled")
@@ -390,6 +457,15 @@ class DocTools:
 
     def _split(self) -> None:
         self._run_tool("pdfsplit", "Split")
+
+    def _convert(self) -> None:
+        files = self._get_files()
+        if not files:
+            messagebox.showwarning("No Files", "Select documents first.")
+            return
+
+        fmt = self.format_var.get()
+        self._run_tool("ebooktool", f"Convert to {fmt}", ["--to", fmt])
 
     def run(self) -> None:
         self.root.mainloop()
