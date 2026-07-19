@@ -24,11 +24,11 @@ checksum: 9749ba267bd229fcc5cefedd61704c7e1a600e4154ae76a9c18110d3ecccf171
 
 ## Executive Summary
 
-OfficeTools is a collection of 11 independent Python CLI/GUI tools plus 1 orchestrator CLI for PDF, audio, video, and ebook processing with consistent per-tool hygiene (ruff, pyright, hatchling) and 5 ADRs documenting architecture decisions. CI/CD is in place with 2 GitHub Actions workflows (pr-gate, merge-gate) covering linting, type checking, testing, dependency scanning (Trivy), secret scanning (Gitleaks), and SAST (CodeQL). No test infrastructure is visible across any tool. macOS .app bundle notarization status is unknown. Heavy dependencies (docling[vlm] + mlx-vlm) in pdf2md create platform lock-in. Recommendation: establish test infrastructure, document system dependencies.
+OfficeTools is a collection of 11 independent Python CLI/GUI tools plus 1 orchestrator CLI for PDF, audio, video, and ebook processing with consistent per-tool hygiene (ruff, pyright, hatchling) and 5 ADRs documenting architecture decisions. CI/CD is now in place with 3 GitHub Actions workflows (pr-gate, merge-gate, sonarcloud) covering linting, type checking, testing, dependency scanning (Trivy), secret scanning (Gitleaks), and SAST (CodeQL). No test infrastructure is visible across any tool. macOS .app bundle notarization status is unknown. Heavy dependencies (docling[vlm] + mlx-vlm) in pdf2md create platform lock-in. Recommendation: establish test infrastructure, document system dependencies.
 
 ## Scope
 
-Assessed: 11 tools + 1 orchestrator (pdf2md, pdfcompress, pdfconcat, pdfsplit, pdfocr, ebooktool, mp4audio, mp4subs, videocompress, videogui, docgui, officetools orchestrator), macOS .app bundles at apps/Doc Tools.app/ and apps/Video Tools.app/, 5 ADRs in docs/architecture/, 2 GitHub Actions workflows. Excluded: cross-tool integration testing, Homebrew distribution, Docker deployment, Windows/Linux compatibility.
+Assessed: 11 tools + 1 orchestrator (pdf2md, pdfcompress, pdfconcat, pdfsplit, pdfocr, ebooktool, mp4audio, mp4subs, videocompress, videogui, docgui, officetools orchestrator), macOS .app bundles at apps/Doc Tools.app/ and apps/Video Tools.app/, 5 ADRs in docs/architecture/, 3 GitHub Actions workflows. Excluded: cross-tool integration testing, Homebrew distribution, Docker deployment, Windows/Linux compatibility.
 
 ## Architecture
 
@@ -40,7 +40,7 @@ Python >=3.10, uv, hatchling, ruff, pyright, pytest across all tools. Per-tool d
 
 ## Code Quality
 
-Consistent tooling across all packages: ruff check + ruff format + pyright + pytest. AGENTS.md documents the development workflow. 5 ADRs are well-structured. CI/CD is in place (pr-gate + merge-gate workflows) with automated linting, type checking, testing, Trivy dependency scanning, Gitleaks secret scanning, and CodeQL SAST. All 11 tools included in CI matrix. No coverage targets in any pyproject.toml. No pre-commit hooks. No mutation testing. No test directories exist yet. Some tools declare zero dependencies but may rely on undocumented system tools (ffmpeg, etc.).
+Consistent tooling across all packages: ruff check + ruff format + pyright + pytest. AGENTS.md documents the development workflow. 5 ADRs are well-structured. CI/CD is in place (pr-gate + merge-gate + sonarcloud workflows) with automated linting, type checking, testing, Trivy dependency scanning, Gitleaks secret scanning, and CodeQL SAST. All 11 tools included in CI matrix. No coverage targets in any pyproject.toml. No pre-commit hooks. No mutation testing. No test directories exist yet. Some tools declare zero dependencies but may rely on undocumented system tools (ffmpeg, etc.).
 
 ## Security
 
@@ -52,7 +52,7 @@ Single-process CLI/GUI tools -- no server or concurrent access concerns. Perform
 
 ## Operations & DevOps
 
-CI/CD pipeline is in place with 2 GitHub Actions workflows. pr-gate.yml runs per-package lint (ruff), type check (pyright), tests (pytest with 90% branch coverage gate), Trivy dependency scan, and Gitleaks secret scan on pull requests. merge-gate.yml adds CodeQL SAST on push to main. No release automation. macOS .app bundles likely not notarized. No Homebrew formula or other distribution channel beyond git clone. No Dockerfile. No Makefile at repository level.
+CI/CD pipeline is in place with 3 GitHub Actions workflows. pr-gate.yml runs per-package lint (ruff), type check (pyright), tests (pytest with 90% branch coverage gate), Trivy dependency scan, and Gitleaks secret scan on pull requests. merge-gate.yml adds CodeQL SAST on push to main. sonarcloud.yml runs local SonarQube (Community Build 26.4) analysis on a dedicated self-hosted runner. No release automation. macOS .app bundles likely not notarized. No Homebrew formula or other distribution channel beyond git clone. No Dockerfile. No Makefile at repository level.
 
 ## Dependencies & Third-Party Risk
 

@@ -1,0 +1,19 @@
+title = "OfficeTools Gitleaks Config"
+
+[extend]
+useDefault = true
+
+# Override the curl-auth-user rule to add an allowlist for shell env vars.
+# In gitleaks v8, a [[rules]] block with an id that matches a default rule
+# extends it (does not replace the regex). The allowlist below suppresses
+# false positives where $SONAR_TOKEN (a CI secret env var) is used in
+# curl -u "$SONAR_TOKEN:" - this is not a hardcoded credential.
+[[rules]]
+id = "curl-auth-user"
+[[rules.allowlists]]
+description = "Allow SONAR_TOKEN shell env var in curl -u (not a hardcoded secret)"
+regexTarget = "match"
+regexes = [
+  '''"\$SONAR_TOKEN:"''',
+  '''"\$\{SONAR_TOKEN\}:"''',
+]
