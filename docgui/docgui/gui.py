@@ -201,6 +201,113 @@ class DocTools:
 
         self._proc_files(files, tool, label, 0, extra_args=extra_args)
 
+    def _set_progress(self, val_within_file: float, idx: int, total: int) -> None:
+        # Scale 0-100% within file to its portion of the batch
+        # Cap at 98% to avoid jumping to next file prematurely
+        p_val = min(val_within_file, 98.0)
+        base = (idx / total) * 100
+        weight = 100.0 / total
+        self.progress["value"] = max(base + (p_val / 100.0) * weight, 0.1)
+
+    def _log_and_parse_progress(self, line: str, idx: int, total: int) -> None:
+        self._log(line)
+
+        # PROGRESS: lines take priority — direct percentage
+        if line.startswith("PROGRESS:"):
+            try:
+                p = float(line.split(":")[1].strip())
+                self._set_progress(p, idx, total)
+                return
+            except (ValueError, IndexError):
+                pass
+
+        # Parse percentage
+        m = re.search(r"(\d+)%", line)
+        if m:
+            try:
+                p = float(m.group(1))
+                if "Loading weights" in line or "Loading models" in line:
+                    self._set_progress(p * 0.15, idx, total)
+                else:
+                    self._set_progress(p, idx, total)
+            except ValueError:
+                pass
+        elif "[DOCLING] Starting" in line:
+            self._set_progress(2.0, idx, total)
+        elif "Processing document" in line:
+            self._set_progress(20.0, idx, total)
+        elif "[DOCLING] Exporting" in line:
+            self._set_progress(90.0, idx, total)
+        elif "\u2713" in line and "KB markdown" in line:
+            self._set_progress(100.0, idx, total)
+
+    def _run_process_thread(
+        self,
+        tool: str,
+        f: Path,
+        files: list[Path],
+        label: str,
+        idx: int,
+        extra_args: list[str] | None,
+    ) -> None:
+        try:
+            env = os.environ.copy()
+            env["PYTHONUNBUFFERED"] = "1"
+
+            cmd = [tool, str(f)]
+            if extra_args:
+                cmd.extend(extra_args)
+
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                env=env,
+            )
+
+            if process.stdout:
+                buffer = ""
+                while True:
+                    char = process.stdout.read(1)
+                    if not char:
+                        if buffer:
+                            line = buffer.strip()
+                            if line:
+                                self.root.after(
+                                    0,
+                                    lambda ln=line: self._log_and_parse_progress(
+                                        ln, idx, len(files)
+                                    ),
+                                )
+                        break
+                    buffer += char
+                    if char in ("\r", "\n"):
+                        line = buffer.strip()
+                        if line:
+                            self.root.after(
+                                0,
+                                lambda ln=line: self._log_and_parse_progress(
+                                    ln, idx, len(files)
+                                ),
+                            )
+                        buffer = ""
+
+            process.wait()
+            ok = process.returncode == 0
+            err_msg = f"Exit code: {process.returncode}" if not ok else ""
+        except Exception as e:
+            ok = False
+            err_msg = str(e)
+
+        self.root.after(
+            0,
+            lambda: self._on_file_done(
+                ok, err_msg, f, files, tool, label, idx, extra_args=extra_args
+            ),
+        )
+
     def _proc_files(
         self,
         files: list[Path],
@@ -228,96 +335,11 @@ class DocTools:
         base_val = (idx / len(files)) * 100
         self.progress["value"] = max(base_val, 0.1)
 
-        def _set_progress(val_within_file: float) -> None:
-            # Scale 0-100% within file to its portion of the batch
-            # Cap at 98% to avoid jumping to next file prematurely
-            p_val = min(val_within_file, 98.0)
-            base = (idx / len(files)) * 100
-            weight = 100.0 / len(files)
-            self.progress["value"] = max(base + (p_val / 100.0) * weight, 0.1)
-
-        def _log_line(line: str) -> None:
-            self._log(line)
-
-            # PROGRESS: lines take priority — direct percentage
-            if line.startswith("PROGRESS:"):
-                try:
-                    p = float(line.split(":")[1].strip())
-                    _set_progress(p)
-                    return
-                except (ValueError, IndexError):
-                    pass
-
-            # Parse percentage
-            m = re.search(r"(\d+)%", line)
-            if m:
-                try:
-                    p = float(m.group(1))
-                    if "Loading weights" in line or "Loading models" in line:
-                        _set_progress(p * 0.15)
-                    else:
-                        _set_progress(p)
-                except ValueError:
-                    pass
-            elif "[DOCLING] Starting" in line:
-                _set_progress(2.0)
-            elif "Processing document" in line:
-                _set_progress(20.0)
-            elif "[DOCLING] Exporting" in line:
-                _set_progress(90.0)
-            elif "\u2713" in line and "KB markdown" in line:
-                _set_progress(100.0)
-
-        def _run() -> None:
-            try:
-                env = os.environ.copy()
-                env["PYTHONUNBUFFERED"] = "1"
-
-                cmd = [tool, str(f)]
-                if extra_args:
-                    cmd.extend(extra_args)
-
-                process = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
-                    env=env,
-                )
-
-                if process.stdout:
-                    buffer = ""
-                    while True:
-                        char = process.stdout.read(1)
-                        if not char:
-                            if buffer:
-                                line = buffer.strip()
-                                if line:
-                                    self.root.after(0, lambda ln=line: _log_line(ln))
-                            break
-                        buffer += char
-                        if char in ("\r", "\n"):
-                            line = buffer.strip()
-                            if line:
-                                self.root.after(0, lambda ln=line: _log_line(ln))
-                            buffer = ""
-
-                process.wait()
-                ok = process.returncode == 0
-                err_msg = f"Exit code: {process.returncode}" if not ok else ""
-            except Exception as e:
-                ok = False
-                err_msg = str(e)
-
-            self.root.after(
-                0,
-                lambda: self._on_file_done(
-                    ok, err_msg, f, files, tool, label, idx, extra_args=extra_args
-                ),
-            )
-
-        threading.Thread(target=_run, daemon=True).start()
+        threading.Thread(
+            target=self._run_process_thread,
+            args=(tool, f, files, label, idx, extra_args),
+            daemon=True,
+        ).start()
 
     def _on_file_done(
         self,
