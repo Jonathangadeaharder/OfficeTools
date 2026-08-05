@@ -48,7 +48,7 @@ def pdf_to_markdown(
     md = pymupdf4llm.to_markdown(str(input_path), pages=pages, write_images=False)
     # Return type is str | list[dict] union in the lib; without page_chunks
     # it is always a str, but the annotation is not precise.
-    assert isinstance(md, str), f"unexpected to_markdown result: {type(md)}"  # noqa: S101
+    assert isinstance(md, str), f"unexpected to_markdown result: {type(md)}"
 
     _emit_progress(90)
     print("  [PDF2MD] Exporting markdown...", flush=True)
