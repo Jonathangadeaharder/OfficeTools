@@ -7,7 +7,7 @@ from .convert import pdf_to_markdown
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="pdf2md",
-        description="Convert PDFs to Markdown using Docling (SOTA AI pipeline).",
+        description="Convert PDFs to Markdown using pymupdf4llm.",
     )
     parser.add_argument("files", nargs="+", type=Path, help="PDF file(s) to convert")
     parser.add_argument(
@@ -15,12 +15,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--pages",
-        help="Page range e.g. '1-5' or '3,7-9'",
-    )
-    parser.add_argument(
-        "--text-only",
-        action="store_true",
-        help="Use OCR/layout pipeline instead of VLM (faster, worse for scanned/image-heavy PDFs)",
+        help="Page range e.g. '1-5' or '3'",
     )
     args = parser.parse_args()
 
@@ -58,4 +53,4 @@ def main() -> None:
             continue
 
         output = args.output if args.output and len(args.files) == 1 else None
-        pdf_to_markdown(path, output, page_range=page_range, text_only=args.text_only)
+        pdf_to_markdown(path, output, page_range=page_range)
