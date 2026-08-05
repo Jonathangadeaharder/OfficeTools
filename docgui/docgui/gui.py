@@ -232,11 +232,9 @@ class DocTools:
                     self._set_progress(p, idx, total)
             except ValueError:
                 pass
-        elif "[DOCLING] Starting" in line:
+        elif "[PDF2MD]" in line:
             self._set_progress(2.0, idx, total)
-        elif "Processing document" in line:
-            self._set_progress(20.0, idx, total)
-        elif "[DOCLING] Exporting" in line:
+        elif "Exporting" in line:
             self._set_progress(90.0, idx, total)
         elif "\u2713" in line and "KB markdown" in line:
             self._set_progress(100.0, idx, total)

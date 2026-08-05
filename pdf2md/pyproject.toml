@@ -1,10 +1,10 @@
 [project]
 name = "pdf2md"
-version = "0.1.0"
+version = "0.2.0"
 requires-python = ">=3.10"
 dependencies = [
-    "docling[vlm]",
-    "mlx-vlm",
+    "pymupdf4llm>=1.26.0",
+    "pymupdf>=1.26.0",
 ]
 
 [project.scripts]
